@@ -1,21 +1,21 @@
 import React, { Component } from "react";
 import { Item } from 'semantic-ui-react'
+import { PlaylistReference } from "../types/MusicTypes";
+import { imageMarkup } from "../helpers/ComponentHelpers";
  
 type Props = {
-    name: string;
-    id: string;
-    artworkUrl: string;
+    playlist: PlaylistReference
+    handlePlaylistSelected: (playlist: PlaylistReference) => void
 }
 
 export class Playlist extends Component<Props, {}> {
     render() {
+        let playlist = this.props.playlist;
         return (
-            <Item>
-                <Item.Image size="mini" src={this.props.artworkUrl}/>
+            <Item className="playlistItem" onClick={() => this.props.handlePlaylistSelected(playlist)}>
+                {imageMarkup(playlist)}
                 <Item.Content verticalAlign='middle'>
-                    <Item.Header as='a'>
-                        {this.props.name}
-                    </Item.Header>
+                        {playlist.name}
                 </Item.Content>
             </Item>
         );

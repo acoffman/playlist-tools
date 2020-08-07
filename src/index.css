@@ -1,0 +1,14 @@
+.item.playlistItem:hover {
+    background-color: #d0d0d0 !important;
+    cursor: pointer;
+}
+
+.ui.divided.items > .item.playlistItem {
+    padding-left: 1em;
+    padding-right: 1em;
+}
+
+.ui.divided.items > .item.tracklistItem {
+    padding-left: 1em;
+    padding-right: 1em;
+}

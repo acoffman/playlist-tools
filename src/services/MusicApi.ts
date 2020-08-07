@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from "axios";
 import MusicKitProvider from "./MusicKitProvider";
+import { PlaylistReference, TrackReference } from "../types/MusicTypes";
 
 export class MusicApi {
     loggedIn = false
@@ -7,39 +8,88 @@ export class MusicApi {
     musicKitInstance = MusicKitProvider.getMusicKitInstance()
 
     constructor() {
-        this.handleAuth()
+        if (this.musicKitInstance && this.musicKitInstance.isAuthorized) {
+            this.loggedIn = true
+            this.setupAxiosClient(this.musicKitInstance)
+        }
     }
 
-    async getPlaylists() {
-        let libraryResp = await this.callWrapper('/me/library/playlists')
-        return libraryResp
+    async getPlaylists(): Promise<PlaylistReference[]> {
+        let libraryResp = await this.callWrapper('/v1/me/library/playlists')
+        return libraryResp.map((pl: any) => {
+            return {
+                id: pl.id,
+                name: pl.attributes.name,
+                canEdit: pl.attributes.canEdit,
+                library: true,
+                artworkUrl: this.getArtworkUrl(pl)
+            }
+        });
     }
 
-    async getPlaylistTracks(playlistId: string) {
-        let tracksResp = await this.callWrapper(`/me/library/playlists/${playlistId}/tracks`)
-        return tracksResp
+
+    async getPlaylistTracks(playlistId: string): Promise<TrackReference[]> {
+        let tracksResp = await this.callWrapper(`/v1/me/library/playlists/${playlistId}/tracks`)
+        return tracksResp.map((track: any)=> {
+            return {
+                id: track.id,
+                name: track.attributes.name,
+                artistName: track.attributes.artistName,
+                albumName: track.attributes.albumName,
+                artworkUrl: this.getArtworkUrl(track)
+            }
+        });
+    }
+
+    async getPublicPlaylistTracks(playlistId: string): Promise<TrackReference[]> {
+        let tracksResp = await this.callWrapper(`/v1/catalog/us/playlists/${playlistId}/tracks`)
+        return tracksResp.map((track: any)=> {
+            return {
+                id: track.id,
+                name: track.attributes.name,
+                artistName: track.attributes.artistName,
+                albumName: track.attributes.albumName,
+                artworkUrl: this.getArtworkUrl(track)
+            }
+        });
     }
 
     getArtworkUrl(data: any) {
         if(data.attributes.artwork) {
             return MusicKitProvider.getPackage().formatArtworkURL(data.attributes.artwork, 128, 128)
         } else {
-            return "/logo192.png"
+            return null
         }
     }
 
-    private handleAuth() {
+    handleAuth(callback: () => void) {
         if (this.musicKitInstance.isAuthorized) {
             this.setupAxiosClient(this.musicKitInstance)
+            callback()
         } else {
-            this.musicKitInstance.authorize().then(() => this.setupAxiosClient(this.musicKitInstance))
+            this.musicKitInstance.authorize()
+                .then(() => this.setupAxiosClient(this.musicKitInstance))
+                .then(() => callback())
+        }
+    }
+
+    handleDeAuth(callback: () => void) {
+        if (this.musicKitInstance.isAuthorized) {
+            this.musicKitInstance.unauthorize()
+                .then(() => {
+                    this.client = null
+                    this.loggedIn = false
+                })
+                .then(() => callback());
+        } else {
+            callback();
         }
     }
 
     private setupAxiosClient(musicKitInstance: any) {
         this.loggedIn = true
         this.client = axios.create({
-            baseURL: 'https://api.music.apple.com/v1',
+            baseURL: 'https://api.music.apple.com/',
             headers: {
                 'Authorization': `Bearer ${musicKitInstance.storekit.developerToken}`,
                 'Music-User-Token': musicKitInstance.api.userToken
